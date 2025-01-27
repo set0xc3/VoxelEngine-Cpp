@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Build Debug VoxelEngine",
+    "command": "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel $(nproc)",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "reveal_target": "dock",
+    "hide": "never",
+    "shell": "system"
+  },
+  {
+    "label": "Build Release VoxelEngine",
+    "command": "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Relase && cmake --build build --parallel $(nproc)",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "reveal_target": "dock",
+    "hide": "never",
+    "shell": "system"
+  },
+  {
+    "label": "Run Debug VoxelEngine",
+    "command": "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel $(nproc) && ./build/VoxelEngine",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always",
+    "reveal_target": "dock",
+    "hide": "never",
+    "shell": "system"
+  }
+]
