@@ -78,7 +78,7 @@ target_link_libraries(
     glfw
     OpenGL::GL
     ${OPENAL_LIBRARY}
-    GLEW::GLEW
+    GLEW::glew
     ZLIB::ZLIB
     PNG::PNG
     CURL::libcurl
