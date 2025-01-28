@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <thread>
 
@@ -26,6 +27,7 @@ uint Window::width = 0;
 uint Window::height = 0;
 int Window::posX = 0;
 int Window::posY = 0;
+glm::vec2 Window::dpi_scale = {1.0, 1.0};
 int Window::framerate = -1;
 double Window::prevSwap = 0.0;
 bool Window::fullscreen = false;
@@ -75,7 +77,7 @@ static void GLAPIENTRY gl_message_callback(
 }
 
 static void cursor_position_callback(GLFWwindow*, double xpos, double ypos) {
-    Events::setPosition(xpos, ypos);
+    Events::setPosition(xpos * Window::dpi_scale.x, ypos * Window::dpi_scale.y);
 }
 
 static void mouse_button_callback(GLFWwindow*, int button, int action, int) {
@@ -106,14 +108,13 @@ static void character_callback(GLFWwindow*, unsigned int codepoint) {
 
 static void window_size_callback(GLFWwindow*, int width, int height) {
     if (width && height) {
-        glViewport(0, 0, width, height);
-        Window::width = width;
-        Window::height = height;
-
         if (!Window::isFullscreen() && !Window::isMaximized()) {
             Window::getSettings()->width.set(width);
             Window::getSettings()->height.set(height);
         }
+        Window::width = width * Window::dpi_scale.x;
+        Window::height = height * Window::dpi_scale.y;
+        glViewport(0, 0, Window::width, Window::height);
     }
     Window::resetScissor();
 }
@@ -223,6 +224,15 @@ int Window::initialize(DisplaySettings* settings) {
         }
     }
 
+    if (std::string(secure_getenv("XDG_SESSION_TYPE")) == "wayland") {
+        float xscale, yscale = 0;
+        glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+
+        Window::dpi_scale = {xscale, yscale};
+        width = width * Window::dpi_scale.x;
+        height = height * Window::dpi_scale.y;
+    }
+
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(gl_message_callback, 0);
 
@@ -262,9 +272,6 @@ int Window::initialize(DisplaySettings* settings) {
     logger.info() << "GL Vendor: " << reinterpret_cast<const char*>(vendor);
     logger.info() << "GL Renderer: " << reinterpret_cast<const char*>(renderer);
     logger.info() << "GLFW: " << glfwGetVersionString();
-    glm::vec2 scale;
-    glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &scale.x, &scale.y);
-    logger.info() << "monitor content scale: " << scale.x << "x" << scale.y;
 
     input_util::initialize();
 
@@ -383,8 +390,10 @@ void Window::setFramerate(int framerate) {
     Window::framerate = framerate;
 }
 
+// NOTE(x11): bug: window height is reduced
 void Window::toggleFullscreen() {
-    fullscreen = !fullscreen;
+    static int last_width, last_height = 0;
+    static int last_xpos, last_ypos = 0;
 
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -394,25 +403,29 @@ void Window::toggleFullscreen() {
     }
 
     if (fullscreen) {
-        glfwGetWindowPos(window, &posX, &posY);
-        glfwSetWindowMonitor(
-            window, monitor, 0, 0, mode->width, mode->height, GLFW_DONT_CARE
-        );
+      glfwSetWindowMonitor(
+          window,
+          nullptr,
+          last_xpos,
+          last_ypos,
+          last_width,
+          last_height,
+          GLFW_DONT_CARE
+      );
+      glfwPollEvents();
     } else {
-        glfwSetWindowMonitor(
-            window,
-            nullptr,
-            posX,
-            posY,
-            settings->width.get(),
-            settings->height.get(),
-            GLFW_DONT_CARE
-        );
+      glfwGetWindowPos(window, &last_xpos, &last_ypos);
+      glfwGetWindowSize(window, &last_width, &last_height);
+      glfwSetWindowMonitor(
+          window, monitor, 0, 0, mode->width, mode->height, GLFW_DONT_CARE
+      );
     }
 
     double xPos, yPos;
     glfwGetCursorPos(window, &xPos, &yPos);
-    Events::setPosition(xPos, yPos);
+    Events::setPosition(xPos * Window::dpi_scale.x, yPos * Window::dpi_scale.y);
+
+    fullscreen = !fullscreen;
 }
 
 bool Window::isFullscreen() {

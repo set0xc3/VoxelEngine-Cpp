@@ -29,6 +29,8 @@ public:
     static int posY;
     static uint width;
     static uint height;
+    static glm::vec2 dpi_scale;
+
     static int initialize(DisplaySettings* settings);
     static void terminate();
 
@@ -63,6 +65,5 @@ public:
     static glm::vec2 size() {
         return glm::vec2(width, height);
     }
-
     static std::unique_ptr<ImageData> takeScreenshot();
 };
